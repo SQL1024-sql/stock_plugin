@@ -1,0 +1,15 @@
+target/
+build/
+.gradle/
+*.jar
+*.class
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+*.db
+*.db-shm
+*.db-wal
+run/

@@ -1,0 +1,146 @@
+# ============================================================
+#  GoldStock — 金錠股市
+#  貨幣：金錠（GOLD_INGOT，玩家背包裡的實體物品）
+#  適用：Paper 26.1.2（需要 Java 25）
+# ============================================================
+
+market:
+  # 每隔幾秒更新一次股價
+  update-interval-seconds: 300
+  # 單次更新最大漲跌幅（%），防止價格暴衝
+  max-tick-change-percent: 18.0
+  # 每檔股票保留幾個歷史價格點（用於走勢圖）
+  history-points: 120
+  # 手續費（%）：買入時加收、賣出時扣除
+  fee-percent: 1.0
+  # 每次更新後是否全服廣播漲跌摘要
+  broadcast-updates: false
+  # 單次更新漲跌超過這個 % 時，全服廣播該檔股票（設 0 關閉）
+  announce-big-moves-percent: 10.0
+
+limits:
+  # 單筆交易最多幾股
+  max-shares-per-trade: 5000
+  # 每位玩家每檔股票最多持有幾股
+  max-shares-per-stock: 20000
+  # 單筆交易金額上限（金錠）；賣出時避免一次吐出太多物品
+  max-gold-per-transaction: 100000
+
+currency:
+  # true = 只接受「乾淨」的金錠（沒有自訂名稱／lore／附魔），
+  #        避免吃掉玩家的特殊道具
+  strict-items: true
+
+gui:
+  title: '<gradient:#f2c14e:#f0e6c8>金錠股市</gradient>'
+  # 走勢圖寬度（GUI 與聊天欄共用）
+  chart-width: 24
+
+# ------------------------------------------------------------
+#  股票清單
+#  symbol 就是指令要打的代號（不分大小寫）
+#    display-name : 顯示名稱（支援 MiniMessage 標籤）
+#    icon         : GUI 圖示的 Material
+#    initial-price: 初始股價（金錠 / 股）
+#    volatility   : 波動率，每次更新的對數報酬標準差（0.02 = 穩、0.10 = 很刺激）
+#    drift        : 長期趨勢，每次更新的平均對數報酬（正 = 緩漲、負 = 緩跌）
+#    min-price / max-price : 股價上下限
+# ------------------------------------------------------------
+stocks:
+  DIA:
+    display-name: '<aqua>鑽石礦業'
+    icon: DIAMOND
+    initial-price: 240.0
+    volatility: 0.05
+    drift: 0.0008
+    min-price: 40.0
+    max-price: 4000.0
+  NTH:
+    display-name: '<dark_purple>獄髓重工'
+    icon: NETHERITE_INGOT
+    initial-price: 780.0
+    volatility: 0.07
+    drift: 0.0012
+    min-price: 120.0
+    max-price: 12000.0
+  RED:
+    display-name: '<red>紅石科技'
+    icon: REDSTONE
+    initial-price: 46.0
+    volatility: 0.06
+    drift: 0.0005
+    min-price: 8.0
+    max-price: 900.0
+  EMR:
+    display-name: '<green>綠寶石商會'
+    icon: EMERALD
+    initial-price: 130.0
+    volatility: 0.04
+    drift: 0.0006
+    min-price: 25.0
+    max-price: 2000.0
+  WHE:
+    display-name: '<yellow>小麥農業'
+    icon: WHEAT
+    initial-price: 18.0
+    volatility: 0.03
+    drift: 0.0003
+    min-price: 4.0
+    max-price: 300.0
+  IRN:
+    display-name: '<gray>鐵砧鋼鐵'
+    icon: IRON_INGOT
+    initial-price: 62.0
+    volatility: 0.035
+    drift: 0.0004
+    min-price: 12.0
+    max-price: 800.0
+  ELY:
+    display-name: '<light_purple>鞘翅航空'
+    icon: ELYTRA
+    initial-price: 1450.0
+    volatility: 0.085
+    drift: 0.0015
+    min-price: 200.0
+    max-price: 25000.0
+  TNT:
+    display-name: '<dark_red>爆破工程'
+    icon: TNT
+    initial-price: 88.0
+    volatility: 0.10
+    drift: -0.0004
+    min-price: 5.0
+    max-price: 3000.0
+  ENP:
+    display-name: '<dark_aqua>終界傳送'
+    icon: ENDER_PEARL
+    initial-price: 310.0
+    volatility: 0.075
+    drift: 0.0009
+    min-price: 50.0
+    max-price: 6000.0
+
+# ------------------------------------------------------------
+#  訊息（MiniMessage 格式）
+#  佔位符用 {大括號}，例如 {symbol} {shares} {gold}
+# ------------------------------------------------------------
+messages:
+  prefix: '<gold>[金錠股市] <reset>'
+  no-permission: '<red>你沒有權限這麼做。'
+  player-only: '<red>這個指令只能由玩家使用。'
+  unknown-stock: '<red>找不到代號 <white>{symbol}</white>，用 <yellow>/stock list</yellow> 看清單。'
+  invalid-number: '<red><white>{input}</white> 不是有效的數量。'
+  shares-too-many: '<red>單筆交易最多 <white>{max}</white> 股。'
+  hold-limit: '<red>你最多只能持有 <white>{max}</white> 股 <white>{symbol}</white>（目前 <white>{held}</white> 股）。'
+  gold-limit: '<red>單筆交易金額上限為 <white>{max}</white> 金錠（這筆是 <white>{gold}</white>）。'
+  not-enough-gold: '<red>金錠不足！需要 <white>{need}</white>，你身上只有 <white>{have}</white>。'
+  not-enough-shares: '<red>你只有 <white>{held}</white> 股 <white>{symbol}</white>。'
+  buy-success: '<green>買入 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，花費 <gold>{gold}</gold> 金錠<gray>（含手續費 {fee}）</gray>。'
+  sell-success: '<green>賣出 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，收入 <gold>{gold}</gold> 金錠<gray>（含手續費 {fee}）</gray>，損益 {pnl}。'
+  inventory-full: '<yellow>背包放不下，多餘的金錠已掉在你腳邊。'
+  no-holdings: '<yellow>你目前沒有任何持股。'
+  reloaded: '<green>設定已重新載入（共 <white>{count}</white> 檔股票）。'
+  price-set: '<green>已將 {name} 的股價設為 <white>{price}</white>。'
+  ticked: '<green>已手動更新股價。'
+  big-move-up: '<green>▲ {name} <white>{symbol}</white> 大漲 <white>{change}%</white>，現價 <gold>{price}</gold> 金錠！'
+  big-move-down: '<red>▼ {name} <white>{symbol}</white> 大跌 <white>{change}%</white>，現價 <gold>{price}</gold> 金錠！'

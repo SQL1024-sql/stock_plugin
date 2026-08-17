@@ -1,0 +1,25 @@
+name: GoldStock
+version: '${project.version}'
+main: io.github.sql1024.goldstock.GoldStockPlugin
+api-version: '26.1'
+description: 以金錠交易的模擬股市插件
+authors: [SQL1024-sql]
+website: https://github.com/SQL1024-sql/stock_plugin
+folia-supported: false
+
+commands:
+  stock:
+    description: 開啟金錠股市介面與交易指令
+    usage: /stock help
+    aliases: [gs, market, stocks]
+
+permissions:
+  goldstock.use:
+    description: 使用股市（看盤、買賣、自己的持股）
+    default: true
+  goldstock.top:
+    description: 查看資產排行榜
+    default: true
+  goldstock.admin:
+    description: 管理指令（reload / setprice / tick / 查看他人持股）
+    default: op
