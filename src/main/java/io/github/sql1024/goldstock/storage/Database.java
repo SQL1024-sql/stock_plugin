@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import io.github.sql1024.goldstock.GoldStockPlugin;
+import io.github.sql1024.goldstock.news.NewsEvent;
 import io.github.sql1024.goldstock.portfolio.Holding;
 import org.sqlite.SQLiteConfig;
 import org.sqlite.SQLiteDataSource;
@@ -112,6 +113,18 @@ public final class Database {
                 unit_price REAL    NOT NULL,
                 gold       INTEGER NOT NULL,
                 ts         INTEGER NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS news (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol        TEXT    NOT NULL,
+                headline      TEXT    NOT NULL,
+                published_dir INTEGER NOT NULL,
+                actual_dir    INTEGER NOT NULL,
+                bias          REAL    NOT NULL,
+                updates_left  INTEGER NOT NULL,
+                created_ts    INTEGER NOT NULL
             )
             """,
             "CREATE INDEX IF NOT EXISTS idx_history_symbol ON price_history (symbol, id)",
@@ -270,6 +283,43 @@ public final class Database {
         });
     }
 
+    /** Replaces the stored set of running news with the current one. */
+    public void saveActiveNews(List<NewsEvent> events) {
+        submit("儲存新聞", () -> {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                try (Statement clear = connection.createStatement()) {
+                    clear.executeUpdate("DELETE FROM news");
+                }
+                String sql = """
+                        INSERT INTO news
+                            (symbol, headline, published_dir, actual_dir, bias, updates_left, created_ts)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """;
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    for (NewsEvent event : events) {
+                        statement.setString(1, event.symbol());
+                        statement.setString(2, event.headline());
+                        statement.setInt(3, event.publishedDirection());
+                        statement.setInt(4, event.actualDirection());
+                        statement.setDouble(5, event.biasPerUpdate());
+                        statement.setInt(6, event.updatesLeft());
+                        statement.setLong(7, event.createdAt());
+                        statement.addBatch();
+                    }
+                    statement.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(autoCommit);
+            }
+        });
+    }
+
     // ------------------------------------------------------------------ reads
 
     public Map<UUID, Map<String, Holding>> loadHoldings() {
@@ -350,6 +400,30 @@ public final class Database {
                                 rows.getLong("gold"),
                                 rows.getLong("ts")));
                     }
+                }
+            }
+            return result;
+        });
+    }
+
+    public List<NewsEvent> loadActiveNews() {
+        return read("讀取新聞", List.of(), () -> {
+            List<NewsEvent> result = new ArrayList<>();
+            String sql = """
+                    SELECT symbol, headline, published_dir, actual_dir, bias, updates_left, created_ts
+                    FROM news WHERE updates_left > 0 ORDER BY id ASC
+                    """;
+            try (Statement statement = connection.createStatement();
+                 ResultSet rows = statement.executeQuery(sql)) {
+                while (rows.next()) {
+                    result.add(new NewsEvent(
+                            rows.getString("symbol"),
+                            rows.getString("headline"),
+                            rows.getInt("published_dir"),
+                            rows.getInt("actual_dir"),
+                            rows.getDouble("bias"),
+                            rows.getInt("updates_left"),
+                            rows.getLong("created_ts")));
                 }
             }
             return result;

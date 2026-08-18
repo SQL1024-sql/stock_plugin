@@ -1,15 +1,18 @@
 # ============================================================
-#  GoldStock — 金錠股市
-#  貨幣：金錠（GOLD_INGOT，玩家背包裡的實體物品）
+#  GoldStock — 玉髓錠股市
+#  貨幣：玉髓錠（見下方 currency 區段，可指定任何物品）
 #  適用：Paper 26.1.2（需要 Java 25）
+#
+#  ⚠ 所有股價都是「模擬」出來的，跟真實股市無關，
+#    只是借用大家熟悉的公司名稱與代號當作遊戲內容。
 # ============================================================
 
 market:
-  # 每隔幾秒更新一次股價
+  # 每隔幾秒更新一次股價（一次更新 = 一根 K 棒）
   update-interval-seconds: 300
   # 單次更新最大漲跌幅（%），防止價格暴衝
   max-tick-change-percent: 18.0
-  # 每檔股票保留幾個歷史價格點（用於走勢圖）
+  # 每檔股票保留幾個歷史價格點（走勢圖與技術指標用）
   history-points: 120
   # 手續費（%）：買入時加收、賣出時扣除
   fee-percent: 1.0
@@ -18,129 +21,235 @@ market:
   # 單次更新漲跌超過這個 % 時，全服廣播該檔股票（設 0 關閉）
   announce-big-moves-percent: 10.0
 
+# ------------------------------------------------------------
+#  財經新聞（唯一「可以稍微預測未來」的來源）
+#
+#  每次股價更新後，有機率跳出一則新聞，指向某一檔股票的
+#  「利多」或「利空」。新聞會在接下來幾次更新裡，給那檔股票
+#  一點額外的漲跌傾向 —— 但只是傾向，不是保證：
+#    * accuracy-percent 決定新聞說的方向有多少機率是真的
+#    * 剩下的機率就是假消息，方向會相反
+#    * 而且隨機波動仍然可能蓋過新聞的影響
+#  所以看新聞下注長期會贏，但單筆還是會輸，這是刻意的。
+# ------------------------------------------------------------
+news:
+  enabled: true
+  # 每次股價更新，有多少 % 機率發生一則新聞
+  chance-percent: 25.0
+  # 新聞方向的準確率（%）。50 = 純亂猜，100 = 穩賺（不建議）
+  accuracy-percent: 70.0
+  # 一則新聞影響幾次股價更新
+  duration-updates: 3
+  # 新聞的力道：實際偏移量 = 這個數字 × 該股波動率 × 隨機 0.6~1.4
+  # 0.7 大約等於「一則新聞抵得過大半個標準差」
+  impact-multiplier: 0.7
+  # 同時最多存在幾則新聞
+  max-active: 3
+  # 是否全服廣播新聞
+  broadcast: true
+  # 新聞跑馬燈保留幾則歷史（/stock news 會顯示）
+  keep-history: 10
+  headlines:
+    bullish:
+      - '{name} 公布財報優於預期，外資調高目標價'
+      - '{name} 拿下大單，法人喊進'
+      - '{name} 新產品線傳出提前量產'
+      - '{name} 宣布庫藏股買回'
+      - '分析師：{name} 進入成長循環，評等調升至買進'
+      - '{name} 傳出將納入指數成分股'
+      - '{name} 上季出貨量創同期新高'
+    bearish:
+      - '{name} 財報不如預期，盤後重挫'
+      - '{name} 遭大客戶砍單，供應鏈拉警報'
+      - '{name} 傳出高層異動，市場觀望'
+      - '外資調降 {name} 評等至中立'
+      - '{name} 產線傳出良率問題'
+      - '{name} 面臨新對手低價競爭'
+      - '{name} 大股東申報轉讓持股'
+
 limits:
   # 單筆交易最多幾股
   max-shares-per-trade: 5000
   # 每位玩家每檔股票最多持有幾股
   max-shares-per-stock: 20000
-  # 單筆交易金額上限（金錠）；賣出時避免一次吐出太多物品
+  # 單筆交易金額上限；賣出時避免一次吐出太多物品
   max-gold-per-transaction: 100000
 
+# ------------------------------------------------------------
+#  貨幣：玩家背包裡的實體物品
+#
+#  material   : 基底材質（原版 Material 名稱）
+#  display-name: 訊息裡顯示的名稱，支援 MiniMessage
+#  match      : 怎麼認出「這顆是錢」
+#     vanilla    = 乾淨的原版物品（沒有自訂名稱／lore／附魔／自訂模型）
+#     name       = 物品名稱必須等於 match-name（給其他插件做的自訂道具用）
+#     item-model = item_model 必須等於 match-item-model
+#     any        = 只要材質對就算（連有名字的都會被扣，慎用）
+#
+#  ⚠「玉髓錠」不是 Minecraft 26.1／26.2 的原版物品。
+#    如果它是你伺服器上其他插件做的自訂道具，把 material 改成它的
+#    基底材質，match 設成 name（或 item-model）就能正確辨識。
+# ------------------------------------------------------------
 currency:
-  # true = 只接受「乾淨」的金錠（沒有自訂名稱／lore／附魔），
-  #        避免吃掉玩家的特殊道具
-  strict-items: true
+  material: GOLD_INGOT
+  display-name: '<gradient:#8fd3c7:#d9f2ec>玉髓錠</gradient>'
+  match: name
+  match-name: '玉髓錠'
+  match-item-model: ''
 
 gui:
-  title: '<gradient:#f2c14e:#f0e6c8>金錠股市</gradient>'
+  title: '<gradient:#8fd3c7:#d9f2ec>玉髓錠股市</gradient>'
   # 走勢圖寬度（GUI 與聊天欄共用）
   chart-width: 24
 
 # ------------------------------------------------------------
+#  技術指標（純粹由歷史股價算出來，不含未來資訊）
+#    短均線在長均線之上 = 多頭排列，反之空頭排列
+# ------------------------------------------------------------
+indicators:
+  enabled: true
+  short-period: 5
+  long-period: 20
+  # 均線差距超過這個 % 才算多頭／空頭，否則視為盤整
+  trend-threshold-percent: 0.5
+
+# ------------------------------------------------------------
 #  股票清單
-#  symbol 就是指令要打的代號（不分大小寫）
+#  symbol 就是指令要打的代號（不分大小寫；台股代號要加引號）
 #    display-name : 顯示名稱（支援 MiniMessage 標籤）
 #    icon         : GUI 圖示的 Material
-#    initial-price: 初始股價（金錠 / 股）
-#    volatility   : 波動率，每次更新的對數報酬標準差（0.02 = 穩、0.10 = 很刺激）
+#    initial-price: 初始股價（每股要幾顆貨幣）
+#    volatility   : 波動率，每次更新的對數報酬標準差（0.02 = 穩、0.08 = 很刺激）
 #    drift        : 長期趨勢，每次更新的平均對數報酬（正 = 緩漲、負 = 緩跌）
 #    min-price / max-price : 股價上下限
+#
+#  ⚠ 這些是模擬價格，不是真實報價，也不會連到任何交易所。
+#    嫌太貴就把 initial-price 跟 min/max 一起等比例調小。
 # ------------------------------------------------------------
 stocks:
-  DIA:
-    display-name: '<aqua>鑽石礦業'
-    icon: DIAMOND
-    initial-price: 240.0
-    volatility: 0.05
-    drift: 0.0008
-    min-price: 40.0
-    max-price: 4000.0
-  NTH:
-    display-name: '<dark_purple>獄髓重工'
-    icon: NETHERITE_INGOT
-    initial-price: 780.0
-    volatility: 0.07
-    drift: 0.0012
-    min-price: 120.0
-    max-price: 12000.0
-  RED:
-    display-name: '<red>紅石科技'
-    icon: REDSTONE
-    initial-price: 46.0
-    volatility: 0.06
-    drift: 0.0005
-    min-price: 8.0
-    max-price: 900.0
-  EMR:
-    display-name: '<green>綠寶石商會'
-    icon: EMERALD
-    initial-price: 130.0
-    volatility: 0.04
-    drift: 0.0006
-    min-price: 25.0
-    max-price: 2000.0
-  WHE:
-    display-name: '<yellow>小麥農業'
-    icon: WHEAT
-    initial-price: 18.0
-    volatility: 0.03
-    drift: 0.0003
-    min-price: 4.0
-    max-price: 300.0
-  IRN:
-    display-name: '<gray>鐵砧鋼鐵'
-    icon: IRON_INGOT
-    initial-price: 62.0
+  # ---------------- 美股 ----------------
+  AAPL:
+    display-name: '<white>蘋果 <gray>Apple'
+    icon: APPLE
+    initial-price: 232.0
     volatility: 0.035
-    drift: 0.0004
-    min-price: 12.0
-    max-price: 800.0
-  ELY:
-    display-name: '<light_purple>鞘翅航空'
-    icon: ELYTRA
-    initial-price: 1450.0
-    volatility: 0.085
-    drift: 0.0015
-    min-price: 200.0
-    max-price: 25000.0
-  TNT:
-    display-name: '<dark_red>爆破工程'
-    icon: TNT
-    initial-price: 88.0
-    volatility: 0.10
-    drift: -0.0004
-    min-price: 5.0
-    max-price: 3000.0
-  ENP:
-    display-name: '<dark_aqua>終界傳送'
-    icon: ENDER_PEARL
-    initial-price: 310.0
+    drift: 0.0006
+    min-price: 60.0
+    max-price: 1200.0
+  NVDA:
+    display-name: '<green>輝達 <gray>NVIDIA'
+    icon: COMPARATOR
+    initial-price: 178.0
+    volatility: 0.065
+    drift: 0.0012
+    min-price: 40.0
+    max-price: 1600.0
+  TSLA:
+    display-name: '<red>特斯拉 <gray>Tesla'
+    icon: MINECART
+    initial-price: 340.0
     volatility: 0.075
-    drift: 0.0009
+    drift: 0.0004
+    min-price: 70.0
+    max-price: 2400.0
+  MSFT:
+    display-name: '<aqua>微軟 <gray>Microsoft'
+    icon: GLASS
+    initial-price: 505.0
+    volatility: 0.033
+    drift: 0.0007
+    min-price: 130.0
+    max-price: 2600.0
+  GOOGL:
+    display-name: '<yellow>Alphabet <gray>Google'
+    icon: SPYGLASS
+    initial-price: 195.0
+    volatility: 0.040
+    drift: 0.0006
     min-price: 50.0
+    max-price: 1100.0
+  AMZN:
+    display-name: '<gold>亞馬遜 <gray>Amazon'
+    icon: CHEST
+    initial-price: 225.0
+    volatility: 0.045
+    drift: 0.0006
+    min-price: 55.0
+    max-price: 1300.0
+  # ---------------- 台股 ----------------
+  '2330':
+    display-name: '<dark_aqua>台積電'
+    icon: AMETHYST_SHARD
+    initial-price: 1120.0
+    volatility: 0.040
+    drift: 0.0009
+    min-price: 300.0
     max-price: 6000.0
+  '2317':
+    display-name: '<gray>鴻海'
+    icon: IRON_INGOT
+    initial-price: 215.0
+    volatility: 0.040
+    drift: 0.0005
+    min-price: 55.0
+    max-price: 1200.0
+  '2454':
+    display-name: '<light_purple>聯發科'
+    icon: REPEATER
+    initial-price: 1385.0
+    volatility: 0.055
+    drift: 0.0007
+    min-price: 350.0
+    max-price: 7500.0
+  '2603':
+    display-name: '<blue>長榮'
+    icon: OAK_BOAT
+    initial-price: 205.0
+    volatility: 0.070
+    drift: 0.0002
+    min-price: 40.0
+    max-price: 1500.0
+  '2412':
+    display-name: '<dark_green>中華電'
+    icon: LIGHTNING_ROD
+    initial-price: 132.0
+    volatility: 0.018
+    drift: 0.0002
+    min-price: 60.0
+    max-price: 400.0
+  '0050':
+    display-name: '<green>元大台灣50'
+    icon: EMERALD
+    initial-price: 195.0
+    volatility: 0.022
+    drift: 0.0005
+    min-price: 70.0
+    max-price: 900.0
 
 # ------------------------------------------------------------
 #  訊息（MiniMessage 格式）
-#  佔位符用 {大括號}，例如 {symbol} {shares} {gold}
+#  佔位符用 {大括號}；{currency} 會自動換成上面設定的貨幣名稱
 # ------------------------------------------------------------
 messages:
-  prefix: '<gold>[金錠股市] <reset>'
+  prefix: '<aqua>[股市] <reset>'
   no-permission: '<red>你沒有權限這麼做。'
   player-only: '<red>這個指令只能由玩家使用。'
   unknown-stock: '<red>找不到代號 <white>{symbol}</white>，用 <yellow>/stock list</yellow> 看清單。'
   invalid-number: '<red><white>{input}</white> 不是有效的數量。'
   shares-too-many: '<red>單筆交易最多 <white>{max}</white> 股。'
   hold-limit: '<red>你最多只能持有 <white>{max}</white> 股 <white>{symbol}</white>（目前 <white>{held}</white> 股）。'
-  gold-limit: '<red>單筆交易金額上限為 <white>{max}</white> 金錠（這筆是 <white>{gold}</white>）。'
-  not-enough-gold: '<red>金錠不足！需要 <white>{need}</white>，你身上只有 <white>{have}</white>。'
+  gold-limit: '<red>單筆交易金額上限為 <white>{max}</white> {currency}<red>（這筆是 <white>{gold}</white>）。'
+  not-enough-gold: '<red>{currency}<red> 不夠！需要 <white>{need}</white>，你身上只有 <white>{have}</white>。'
   not-enough-shares: '<red>你只有 <white>{held}</white> 股 <white>{symbol}</white>。'
-  buy-success: '<green>買入 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，花費 <gold>{gold}</gold> 金錠<gray>（含手續費 {fee}）</gray>。'
-  sell-success: '<green>賣出 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，收入 <gold>{gold}</gold> 金錠<gray>（含手續費 {fee}）</gray>，損益 {pnl}。'
-  inventory-full: '<yellow>背包放不下，多餘的金錠已掉在你腳邊。'
+  buy-success: '<green>買入 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，花費 <white>{gold}</white> {currency}<gray>（含手續費 {fee}）</gray>。'
+  sell-success: '<green>賣出 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，收入 <white>{gold}</white> {currency}<gray>（含手續費 {fee}）</gray>，損益 {pnl}。'
+  inventory-full: '<yellow>背包放不下，多餘的 {currency} <yellow>已掉在你腳邊。'
   no-holdings: '<yellow>你目前沒有任何持股。'
   reloaded: '<green>設定已重新載入（共 <white>{count}</white> 檔股票）。'
   price-set: '<green>已將 {name} 的股價設為 <white>{price}</white>。'
   ticked: '<green>已手動更新股價。'
-  big-move-up: '<green>▲ {name} <white>{symbol}</white> 大漲 <white>{change}%</white>，現價 <gold>{price}</gold> 金錠！'
-  big-move-down: '<red>▼ {name} <white>{symbol}</white> 大跌 <white>{change}%</white>，現價 <gold>{price}</gold> 金錠！'
+  big-move-up: '<green>▲ {name} <white>{symbol}</white> 大漲 <white>{change}%</white>，現價 <white>{price}</white> {currency}<green>！'
+  big-move-down: '<red>▼ {name} <white>{symbol}</white> 大跌 <white>{change}%</white>，現價 <white>{price}</white> {currency}<red>！'
+  news-bullish: '<gold>📰 <yellow>財經快訊 <dark_gray>| <green>利多 <white>{symbol}</white> <gray>— {headline}'
+  news-bearish: '<gold>📰 <yellow>財經快訊 <dark_gray>| <red>利空 <white>{symbol}</white> <gray>— {headline}'
+  no-news: '<yellow>目前沒有任何新聞。'

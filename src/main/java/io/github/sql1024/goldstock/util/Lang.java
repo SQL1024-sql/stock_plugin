@@ -19,6 +19,7 @@ public final class Lang {
 
     private final Map<String, String> values = new HashMap<>();
     private String prefix = "";
+    private String currencyName = "";
 
     public void load(FileConfiguration config) {
         values.clear();
@@ -35,13 +36,18 @@ public final class Lang {
         prefix = values.getOrDefault("prefix", "");
     }
 
+    /** The currency name substituted for {@code {currency}} in every message. */
+    public void currencyName(String currencyName) {
+        this.currencyName = currencyName == null ? "" : currencyName;
+    }
+
     /** Raw MiniMessage string with placeholders already substituted, without the prefix. */
     public String raw(String key, Object... placeholders) {
         String template = values.get(key);
         if (template == null) {
             return "<red>[missing message: " + key + "]";
         }
-        return substitute(template, placeholders);
+        return substitute(template, placeholders).replace("{currency}", currencyName);
     }
 
     /** Rendered component including the configured prefix. */

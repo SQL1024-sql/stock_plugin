@@ -22,6 +22,7 @@ public abstract class StockMenu implements InventoryHolder {
     };
 
     protected static final int SLOT_PREVIOUS = 45;
+    protected static final int SLOT_NEWS = 47;
     protected static final int SLOT_HELP = 48;
     protected static final int SLOT_SWITCH = 49;
     protected static final int SLOT_REFRESH = 50;
@@ -64,6 +65,29 @@ public abstract class StockMenu implements InventoryHolder {
         page = Math.clamp(page, 0, pageCount(entries) - 1);
     }
 
+    /** The news board button: active headlines are the only hint about where prices are heading. */
+    private org.bukkit.inventory.ItemStack newsButton() {
+        java.util.List<String> lore = new java.util.ArrayList<>();
+        var active = plugin.news().active();
+        if (active.isEmpty()) {
+            lore.add("<gray>目前沒有新聞。");
+        } else {
+            for (var news : active) {
+                lore.add((news.bullish() ? "<green>▲ 利多 " : "<red>▼ 利空 ")
+                        + "<white>" + news.symbol());
+                lore.add("<dark_gray>  " + news.headline());
+            }
+        }
+        lore.add("<dark_gray>");
+        lore.add("<gray>新聞準確率約 <white>"
+                + io.github.sql1024.goldstock.util.Fmt.price(plugin.newsSettings().accuracyPercent())
+                + "%</white><gray>，也就是說會有假消息。");
+        lore.add("<yellow>點一下在聊天欄看完整新聞");
+        return Icons.of(org.bukkit.Material.WRITTEN_BOOK,
+                active.isEmpty() ? "<gray>📰 財經新聞" : "<gold>📰 財經新聞 <yellow>(" + active.size() + ")",
+                lore);
+    }
+
     protected final void drawFrame(int entries, String switchNameMini, java.util.List<String> switchLore) {
         for (int slot = 0; slot < inventory.getSize(); slot++) {
             inventory.setItem(slot, Icons.filler());
@@ -94,11 +118,13 @@ public abstract class StockMenu implements InventoryHolder {
         inventory.setItem(SLOT_HELP, Icons.of(org.bukkit.Material.BOOK,
                 "<gold>怎麼玩",
                 java.util.List.of(
-                        "<gray>貨幣是背包裡的 <gold>金錠</gold><gray>。",
+                        "<gray>貨幣是背包裡的 " + plugin.currency().displayName() + "<gray>。",
                         "<yellow>左鍵 <gray>買 1 股　<yellow>Shift+左鍵 <gray>買 10 股",
                         "<yellow>右鍵 <gray>賣 1 股　<yellow>Shift+右鍵 <gray>賣 10 股",
                         "<yellow>中鍵 <gray>在聊天欄看詳細走勢",
                         "<dark_gray>指令：/stock help")));
+
+        inventory.setItem(SLOT_NEWS, newsButton());
 
         inventory.setItem(SLOT_SWITCH, Icons.of(org.bukkit.Material.CHEST, switchNameMini, switchLore));
     }

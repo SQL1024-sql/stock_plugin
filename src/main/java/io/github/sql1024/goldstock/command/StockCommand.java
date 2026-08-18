@@ -30,7 +30,7 @@ public final class StockCommand implements TabExecutor {
             DateTimeFormatter.ofPattern("MM-dd HH:mm").withZone(ZoneId.systemDefault());
 
     private static final List<String> PUBLIC_SUBCOMMANDS =
-            List.of("help", "list", "info", "buy", "sell", "portfolio", "log", "top");
+            List.of("help", "list", "info", "news", "buy", "sell", "portfolio", "log", "top");
     private static final List<String> ADMIN_SUBCOMMANDS =
             List.of("reload", "setprice", "tick");
 
@@ -65,6 +65,7 @@ public final class StockCommand implements TabExecutor {
             case "buy" -> trade(sender, args, true);
             case "sell" -> trade(sender, args, false);
             case "portfolio", "p" -> portfolio(sender, args);
+            case "news" -> news(sender);
             case "log", "history" -> log(sender, args);
             case "top" -> top(sender);
             case "reload" -> reload(sender);
@@ -79,11 +80,13 @@ public final class StockCommand implements TabExecutor {
 
     private void help(CommandSender sender) {
         List<Component> lines = new ArrayList<>();
-        lines.add(Lang.mini("<dark_gray>▬▬▬▬▬ <gold>金錠股市 <dark_gray>▬▬▬▬▬"));
-        lines.add(Lang.mini("<gray>貨幣是背包裡的 <gold>金錠</gold><gray>，買賣直接進出你的背包。"));
+        lines.add(Lang.mini("<dark_gray>▬▬▬▬▬ <aqua>股市 <dark_gray>▬▬▬▬▬"));
+        lines.add(Lang.mini("<gray>貨幣是背包裡的 " + plugin.currency().displayName()
+                + "<gray>，買賣直接進出你的背包。"));
         lines.add(Lang.mini("<yellow>/stock <gray>開啟股市介面"));
         lines.add(Lang.mini("<yellow>/stock list <gray>所有股票與現價"));
-        lines.add(Lang.mini("<yellow>/stock info 代號 <gray>單檔詳細資訊與走勢"));
+        lines.add(Lang.mini("<yellow>/stock info 代號 <gray>單檔詳細資訊、走勢與技術面"));
+        lines.add(Lang.mini("<yellow>/stock news <gray>財經新聞（唯一的預測線索）"));
         lines.add(Lang.mini("<yellow>/stock buy 代號 股數 <gray>買入"));
         lines.add(Lang.mini("<yellow>/stock sell 代號 股數|all <gray>賣出"));
         lines.add(Lang.mini("<yellow>/stock portfolio <gray>我的持股"));
@@ -220,6 +223,10 @@ public final class StockCommand implements TabExecutor {
         lines.add(Lang.mini("<gray>合計市值 <gold>" + Fmt.gold(value) + "</gold> <gray>金錠　"
                 + "投入 <gold>" + Fmt.gold(invested) + "</gold>　未實現 " + Fmt.pnlTag(value - invested)));
         sendLines(sender, lines);
+    }
+
+    private void news(CommandSender sender) {
+        sendLines(sender, Report.newsBoard(plugin));
     }
 
     private void log(CommandSender sender, String[] args) {

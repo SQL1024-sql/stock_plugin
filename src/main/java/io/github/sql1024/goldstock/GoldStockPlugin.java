@@ -8,13 +8,17 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 import io.github.sql1024.goldstock.command.StockCommand;
-import io.github.sql1024.goldstock.economy.GoldEconomy;
+import io.github.sql1024.goldstock.economy.CurrencyService;
+import io.github.sql1024.goldstock.economy.CurrencySettings;
 import io.github.sql1024.goldstock.gui.MenuListener;
 import io.github.sql1024.goldstock.gui.MenuManager;
 import io.github.sql1024.goldstock.listener.PlayerListener;
+import io.github.sql1024.goldstock.market.IndicatorSettings;
 import io.github.sql1024.goldstock.market.MarketManager;
 import io.github.sql1024.goldstock.market.MarketSettings;
 import io.github.sql1024.goldstock.market.Stock;
+import io.github.sql1024.goldstock.news.NewsManager;
+import io.github.sql1024.goldstock.news.NewsSettings;
 import io.github.sql1024.goldstock.portfolio.PortfolioManager;
 import io.github.sql1024.goldstock.storage.Database;
 import io.github.sql1024.goldstock.trade.TradeService;
@@ -23,17 +27,21 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
-/** GoldStock — a simulated stock market traded with physical gold ingots. */
+/** GoldStock — a simulated stock market traded with a physical item as currency. */
 public final class GoldStockPlugin extends JavaPlugin {
 
     private final Lang lang = new Lang();
     private final Map<UUID, String> names = new HashMap<>();
 
     private MarketSettings settings;
+    private CurrencySettings currency;
+    private NewsSettings newsSettings;
+    private IndicatorSettings indicatorSettings;
     private Database database;
     private MarketManager market;
+    private NewsManager news;
     private PortfolioManager portfolios;
-    private GoldEconomy economy;
+    private CurrencyService economy;
     private TradeService trades;
     private MenuManager menus;
     private BukkitTask tickTask;
@@ -41,8 +49,7 @@ public final class GoldStockPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
-        settings = MarketSettings.from(getConfig());
-        lang.load(getConfig());
+        readSettings();
 
         database = new Database(this);
         try {
@@ -54,13 +61,15 @@ public final class GoldStockPlugin extends JavaPlugin {
         }
 
         market = new MarketManager(this);
+        news = new NewsManager(this);
         portfolios = new PortfolioManager(this);
-        economy = new GoldEconomy(this);
+        economy = new CurrencyService(this);
         trades = new TradeService(this);
         menus = new MenuManager(this);
 
         market.loadStocks(getConfig(), settings);
         restoreMarketState();
+        news.load(database.loadActiveNews());
         portfolios.loadAll(database.loadHoldings());
         names.putAll(database.loadPlayerNames());
 
@@ -100,12 +109,21 @@ public final class GoldStockPlugin extends JavaPlugin {
     /** Re-reads config.yml: settings, messages, stock definitions and the update interval. */
     public void reloadEverything() {
         reloadConfig();
-        settings = MarketSettings.from(getConfig());
-        lang.load(getConfig());
+        readSettings();
         market.loadStocks(getConfig(), settings);
         restoreMarketState();
+        news.pruneUnknownStocks();
         startTicking();
         menus.refreshOpenMenus();
+    }
+
+    private void readSettings() {
+        settings = MarketSettings.from(getConfig());
+        currency = CurrencySettings.from(getConfig(), getLogger());
+        newsSettings = NewsSettings.from(getConfig());
+        indicatorSettings = IndicatorSettings.from(getConfig());
+        lang.load(getConfig());
+        lang.currencyName(currency.displayName());
     }
 
     /** Applies the stored price and history to any stock that does not have a live price yet. */
@@ -144,6 +162,18 @@ public final class GoldStockPlugin extends JavaPlugin {
         return settings;
     }
 
+    public CurrencySettings currency() {
+        return currency;
+    }
+
+    public NewsSettings newsSettings() {
+        return newsSettings;
+    }
+
+    public IndicatorSettings indicators() {
+        return indicatorSettings;
+    }
+
     public Lang lang() {
         return lang;
     }
@@ -156,11 +186,15 @@ public final class GoldStockPlugin extends JavaPlugin {
         return market;
     }
 
+    public NewsManager news() {
+        return news;
+    }
+
     public PortfolioManager portfolios() {
         return portfolios;
     }
 
-    public GoldEconomy economy() {
+    public CurrencyService economy() {
         return economy;
     }
 

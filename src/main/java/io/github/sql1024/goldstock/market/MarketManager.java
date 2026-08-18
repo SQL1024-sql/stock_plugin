@@ -118,7 +118,8 @@ public final class MarketManager {
         List<Stock> moved = new ArrayList<>(stocks.size());
 
         for (Stock stock : stocks.values()) {
-            double factor = Math.exp(stock.drift() + stock.volatility() * random.nextGaussian());
+            double newsBias = plugin.news().biasFor(stock.symbol());
+            double factor = Math.exp(stock.drift() + newsBias + stock.volatility() * random.nextGaussian());
             factor = Math.clamp(factor, 1.0 - maxChange, 1.0 + maxChange);
             stock.moveTo(stock.price() * factor);
             moved.add(stock);
@@ -131,6 +132,12 @@ public final class MarketManager {
         }
 
         announce(settings, moved);
+
+        // News is spent by the move it caused, and the next headline is published now so players
+        // get one window to react before it starts biasing the price.
+        plugin.news().afterUpdate();
+        plugin.news().maybePublish();
+
         plugin.menus().refreshOpenMenus();
     }
 

@@ -6,6 +6,7 @@ import java.util.Map;
 
 import io.github.sql1024.goldstock.GoldStockPlugin;
 import io.github.sql1024.goldstock.market.Stock;
+import io.github.sql1024.goldstock.news.NewsEvent;
 import io.github.sql1024.goldstock.portfolio.Holding;
 import io.github.sql1024.goldstock.util.Fmt;
 import io.github.sql1024.goldstock.util.Lang;
@@ -41,12 +42,13 @@ public final class PortfolioMenu extends StockMenu {
         long value = plugin.portfolios().marketValue(viewer.getUniqueId());
         long invested = plugin.portfolios().investedTotal(viewer.getUniqueId());
 
+        String currency = plugin.currency().displayName();
         drawFrame(positions.size(), "<aqua>← 回到股市", List.of(
-                "<gray>身上金錠：<gold>" + Fmt.gold(carried),
-                "<gray>持股市值：<gold>" + Fmt.gold(value),
-                "<gray>投入成本：<gold>" + Fmt.gold(invested),
+                "<gray>身上的錢：<white>" + Fmt.gold(carried) + "</white> " + currency,
+                "<gray>持股市值：<white>" + Fmt.gold(value),
+                "<gray>投入成本：<white>" + Fmt.gold(invested),
                 "<gray>未實現損益：" + Fmt.pnlTag(value - invested),
-                "<gray>總資產：<gold>" + Fmt.gold(carried + value),
+                "<gray>總資產：<white>" + Fmt.gold(carried + value),
                 "<yellow>點一下回到股市"));
 
         if (positions.isEmpty()) {
@@ -77,16 +79,21 @@ public final class PortfolioMenu extends StockMenu {
         long value = (long) Math.floor(stock.price() * holding.shares());
         long payout = plugin.settings().sellProceeds(stock.price(), holding.shares());
 
+        String currency = plugin.currency().displayName();
         List<String> lore = new ArrayList<>();
         lore.add("<gray>持有 <white>" + holding.shares() + "</white> 股　均價 <white>"
                 + Fmt.price(holding.averageCost()));
-        lore.add("<gray>現價 <gold>" + Fmt.price(stock.price()) + "</gold> <gray>金錠　"
+        lore.add("<gray>現價 <white>" + Fmt.price(stock.price()) + "</white>　"
                 + Fmt.changeTag(stock.changePercent()));
-        lore.add("<gray>市值 <gold>" + Fmt.gold(value) + "</gold> <gray>金錠");
-        lore.add("<gray>投入 <gold>" + Fmt.gold(holding.invested()) + "</gold> <gray>金錠");
+        lore.add("<gray>市值 <white>" + Fmt.gold(value) + "</white> " + currency);
+        lore.add("<gray>投入 <white>" + Fmt.gold(holding.invested()) + "</white> " + currency);
         lore.add("<gray>未實現損益 " + Fmt.pnlTag(value - holding.invested()));
-        lore.add("<gray>全部賣出可得 <gold>" + Fmt.gold(payout) + "</gold> <gray>金錠");
+        lore.add("<gray>全部賣出可得 <white>" + Fmt.gold(payout) + "</white> " + currency);
         lore.add("<gray>走勢 " + Sparkline.render(stock.history(), plugin.settings().chartWidth()));
+        for (NewsEvent news : plugin.news().activeFor(stock.symbol())) {
+            lore.add("<gold>📰 " + (news.bullish() ? "<green>利多" : "<red>利空")
+                    + " <dark_gray>" + news.headline());
+        }
         lore.add("<dark_gray>");
         lore.add("<yellow>左鍵 <gray>賣 1　<yellow>Shift+左鍵 <gray>全部賣出");
         lore.add("<yellow>右鍵 <gray>買 1　<yellow>Shift+右鍵 <gray>買 10");
@@ -114,6 +121,13 @@ public final class PortfolioMenu extends StockMenu {
             case SLOT_REFRESH -> {
                 click(Sound.UI_BUTTON_CLICK);
                 render();
+                return;
+            }
+            case SLOT_NEWS -> {
+                for (Component line : Report.newsBoard(plugin)) {
+                    viewer.sendMessage(line);
+                }
+                click(Sound.ITEM_BOOK_PAGE_TURN);
                 return;
             }
             case SLOT_SWITCH -> {

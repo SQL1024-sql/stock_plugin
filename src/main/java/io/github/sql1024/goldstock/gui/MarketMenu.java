@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import io.github.sql1024.goldstock.GoldStockPlugin;
+import io.github.sql1024.goldstock.market.Indicators;
 import io.github.sql1024.goldstock.market.Stock;
+import io.github.sql1024.goldstock.news.NewsEvent;
 import io.github.sql1024.goldstock.portfolio.Holding;
 import io.github.sql1024.goldstock.util.Fmt;
 import io.github.sql1024.goldstock.util.Lang;
@@ -30,8 +32,8 @@ public final class MarketMenu extends StockMenu {
 
         long carried = plugin.economy().count(viewer);
         drawFrame(stocks.size(), "<gold>我的持股", List.of(
-                "<gray>身上金錠：<gold>" + Fmt.gold(carried),
-                "<gray>持股市值：<gold>" + Fmt.gold(plugin.portfolios().marketValue(viewer.getUniqueId())),
+                "<gray>身上的錢：<white>" + Fmt.gold(carried) + "</white> " + plugin.currency().displayName(),
+                "<gray>持股市值：<white>" + Fmt.gold(plugin.portfolios().marketValue(viewer.getUniqueId())),
                 "<yellow>點一下查看投資組合"));
 
         int from = page * CONTENT_SLOTS.length;
@@ -49,25 +51,39 @@ public final class MarketMenu extends StockMenu {
     }
 
     private org.bukkit.inventory.ItemStack buildIcon(Stock stock, Holding holding, long carried) {
+        String currency = plugin.currency().displayName();
         List<String> lore = new ArrayList<>();
         lore.add("<gray>代號 <white>" + stock.symbol());
-        lore.add("<gray>現價 <gold>" + Fmt.price(stock.price()) + "</gold> <gray>金錠 / 股");
+        lore.add("<gray>現價 <white>" + Fmt.price(stock.price()) + "</white> " + currency + "<gray> / 股");
         lore.add("<gray>漲跌 " + Fmt.changeTag(stock.changePercent())
                 + "<reset><gray>　累計 " + Fmt.changeTag(stock.sessionChangePercent()));
         lore.add("<gray>區間 <white>" + Fmt.price(stock.historyLow())
                 + "</white> ~ <white>" + Fmt.price(stock.historyHigh()));
         lore.add("<gray>走勢 " + Sparkline.render(stock.history(), plugin.settings().chartWidth()));
+
+        if (plugin.indicators().enabled()) {
+            Indicators indicators = Indicators.of(stock, plugin.indicators());
+            lore.add("<gray>技術面 " + indicators.trendTag());
+            lore.add("<dark_gray>  " + indicators.maTag(plugin.indicators()));
+        }
+
+        for (NewsEvent news : plugin.news().activeFor(stock.symbol())) {
+            lore.add("<gold>📰 " + (news.bullish() ? "<green>利多" : "<red>利空")
+                    + " <dark_gray>還剩 " + news.updatesLeft() + " 次更新");
+            lore.add("<dark_gray>  " + news.headline());
+        }
+
         lore.add("<dark_gray>");
 
         long unitCost = plugin.settings().buyCost(stock.price(), 1);
-        lore.add("<gray>買 1 股 <gold>" + Fmt.gold(unitCost) + "</gold> <gray>金錠"
-                + (carried >= unitCost ? "" : "　<red>(金錠不足)"));
+        lore.add("<gray>買 1 股 <white>" + Fmt.gold(unitCost) + "</white> " + currency
+                + (carried >= unitCost ? "" : "　<red>(不夠)"));
 
         if (holding.shares() > 0) {
             long value = (long) Math.floor(stock.price() * holding.shares());
             lore.add("<gray>持有 <white>" + holding.shares() + "</white> 股　均價 <white>"
                     + Fmt.price(holding.averageCost()));
-            lore.add("<gray>市值 <gold>" + Fmt.gold(value) + "</gold> <gray>金錠　損益 "
+            lore.add("<gray>市值 <white>" + Fmt.gold(value) + "</white> " + currency + "<gray>　損益 "
                     + Fmt.pnlTag(value - holding.invested()));
         }
 
@@ -98,6 +114,13 @@ public final class MarketMenu extends StockMenu {
             case SLOT_REFRESH -> {
                 click(Sound.UI_BUTTON_CLICK);
                 render();
+                return;
+            }
+            case SLOT_NEWS -> {
+                for (Component line : Report.newsBoard(plugin)) {
+                    viewer.sendMessage(line);
+                }
+                click(Sound.ITEM_BOOK_PAGE_TURN);
                 return;
             }
             case SLOT_SWITCH -> {
